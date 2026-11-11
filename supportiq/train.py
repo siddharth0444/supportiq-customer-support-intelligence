@@ -40,7 +40,7 @@ def train_model(data_path=DEMO_DATA_PATH) -> dict:
         "source" in frame.columns and frame["source"].eq("synthetic_demo").all()
     )
     metrics = {
-        "rows": int(len(frame)),
+        "rows": len(frame),
         "synthetic_demo_data": synthetic_demo_data,
         "model": "TF-IDF + Logistic Regression",
         "classification_report": report,
