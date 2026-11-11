@@ -4,6 +4,7 @@ from __future__ import annotations
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from sklearn.metrics import accuracy_score, confusion_matrix
 
 from supportiq.config import DEMO_DATA_PATH
 from supportiq.inference import ModelNotTrainedError, TicketPredictor
@@ -58,17 +59,54 @@ try:
             try:
                 valid = frame.loc[frame["text"].str.strip().ne("")].reset_index(drop=True)
                 predictions = [predictor.predict(value) for value in valid["text"]]
-                analyzed = pd.DataFrame(predictions)
+                analyzed = pd.DataFrame(predictions).rename(
+                    columns={"category": "predicted_category"})
                 cols = st.columns(3)
                 cols[0].metric("Analyzed tickets", len(analyzed))
                 cols[1].metric("High priority", int((analyzed["priority"] == "high").sum()))
                 cols[2].metric("Negative sentiment", int((analyzed["sentiment"] == "negative").sum()))
                 st.plotly_chart(
-                    px.histogram(analyzed, x="category", color="priority", barmode="group",
-                                 title="Ticket volume by predicted category"),
+                    px.histogram(analyzed, x="predicted_category", color="priority", barmode="group",
+                    title="Ticket volume by predicted category"),
                     use_container_width=True,
                 )
-                st.dataframe(pd.concat([valid, analyzed], axis=1), use_container_width=True)
+                
+                # Evaluate predictions against the original dataset labels
+                if "category" in valid.columns:
+                    actual = valid["category"].astype(str).str.lower()
+                    predicted = analyzed["predicted_category"].astype(str).str.lower()
+
+                    accuracy = accuracy_score(actual, predicted)
+
+                    st.subheader("Model evaluation")
+                    st.metric("Classification accuracy", f"{accuracy:.1%}")
+
+                    labels = sorted(set(actual) | set(predicted))
+                    matrix = confusion_matrix(actual, predicted, labels=labels)
+
+                    fig = px.imshow(
+                        matrix,
+                        x=labels,
+                        y=labels,
+                        text_auto=True,
+                        labels={
+                            "x": "Predicted category",
+                            "y": "Actual category",
+                            "color": "Ticket count",
+                        },
+                        title="Confusion matrix",
+                        color_continuous_scale="Blues",
+                    )
+
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("No original category labels available for evaluation.")
+
+                st.dataframe(
+                    pd.concat([valid, analyzed], axis=1),
+                    use_container_width=True,
+                )
+
             except ModelNotTrainedError as exc:
                 st.error(str(exc))
         else:
