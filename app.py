@@ -1,15 +1,47 @@
 """Streamlit dashboard for SupportIQ."""
 from __future__ import annotations
 
+import subprocess
+import sys
+
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 from sklearn.metrics import accuracy_score, confusion_matrix
 
-from supportiq.config import DEMO_DATA_PATH
+from supportiq.config import DEMO_DATA_PATH, MODEL_PATH, ROOT_DIR
 from supportiq.inference import ModelNotTrainedError, TicketPredictor
 
+# Prepare demo data and model when deployed.
+if not DEMO_DATA_PATH.exists():
+    subprocess.run(
+        [sys.executable, str(ROOT_DIR / "scripts" / "generate_demo_data.py")],
+        cwd=ROOT_DIR,
+        check=True,
+    )
+
+if not MODEL_PATH.exists():
+    subprocess.run(
+        [sys.executable, "-m", "supportiq.train"],
+        cwd=ROOT_DIR,
+        check=True,
+    )
 st.set_page_config(page_title="SupportIQ", page_icon="🎧", layout="wide")
+
+# Generate demo data and train the model on first cloud startup.
+if not DEMO_DATA_PATH.exists():
+    subprocess.run(
+        [sys.executable, str(ROOT_DIR / "scripts" / "generate_demo_data.py")],
+        cwd=ROOT_DIR,
+        check=True,
+    )
+
+if not MODEL_PATH.exists():
+    subprocess.run(
+        [sys.executable, "-m", "supportiq.train"],
+        cwd=ROOT_DIR,
+        check=True,
+    )
 st.title("🎧 SupportIQ")
 st.caption("Customer Support Intelligence · NLP triage and ticket analytics")
 
