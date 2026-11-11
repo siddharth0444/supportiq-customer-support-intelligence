@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+from typing import Annotated
 
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -38,7 +39,7 @@ def predict_ticket(request: TicketRequest) -> dict:
 
 
 @app.post("/analyze-csv")
-async def analyze_csv(file: UploadFile = File(...)) -> dict:
+async def analyze_csv(file: Annotated[UploadFile, File()]) -> dict:
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=415, detail="Upload a .csv file.")
     raw = await file.read()
@@ -49,7 +50,7 @@ async def analyze_csv(file: UploadFile = File(...)) -> dict:
         results = []
         for index, row in frame.iterrows():
             results.append({
-                "row": int(index),
+                "row": index,
                 "text": row["text"],
                 **predictor.predict(row["text"]),
             })
